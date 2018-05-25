@@ -48,13 +48,13 @@ class ControllerThread(threading.Thread):
 
         # Series of waypoints to follow
         self.waypoints = [
-            [1.0, 0.8, 0.5],
+            [1.0, 0.8, 0.8],
             [1.0, 1.6, 2.0],
             [1.0, 3.2, 2.0],
-            [1.0, 4.0, 0.5],
+            [1.0, 4.0, 0.8],
             [1.0, 3.2, 2.0],
             [1.0, 1.6, 2.0],
-            [1.0, 0.8, 0.5],
+            [1.0, 0.8, 0.8],
         ]
         self.waypoint_idx = 0
         self.waypoint_ticks = 0
@@ -225,7 +225,7 @@ class ControllerThread(threading.Thread):
     def _update_waypoint(self):
 
         ex, ey, ez = self.pos_ref - self.pos
-        if np.sum([ex**2, ey**2, ez**2]) < 0.5:
+        if np.sum([ex**2, ey**2, ez**2]) < 0.2:
             if self.waypoint_ticks > 100:
                 self.waypoint_idx = (self.waypoint_idx + 1) % len(self.waypoints)
                 self.pos_ref = self.waypoints[self.waypoint_idx]
@@ -256,9 +256,9 @@ class ControllerThread(threading.Thread):
         # INSERT CONTROL EQUATIONS HERE
         Kpp = 10.0
         Kpd = 5.0
-        Kzp = 0.2
-        Kzd = 0.2
-        Kpsid = 0.0
+        Kzp = 0.05
+        Kzd = 0.05
+        Kpsid = 0.5
         C = 123712.0
         m = 0.027
         g = 9.81
