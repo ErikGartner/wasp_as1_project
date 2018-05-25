@@ -46,6 +46,18 @@ class ControllerThread(threading.Thread):
         super(ControllerThread, self).__init__()
         self.cf = cf
 
+        # Series of waypoints to follow
+        self.waypoints = [
+            [1.0, 0.8, 0.0],
+            [1.0, 1.6, 1.0],
+            [1.0, 0.2, 1.0],
+            [1.0, 4.0, 0.0],
+            [1.0, 0.2, 1.0],
+            [1.0, 1.6, 1.0],
+            [1.0, 0.8, 0.0],
+        ]
+        self.waypoint_idx = 0
+
         # Reset state
         self.disable(stop=False)
 
@@ -208,12 +220,23 @@ class ControllerThread(threading.Thread):
                     fh.flush()
                 self.loop_sleep(time_start)
 
+    def _update_waypoint(self):
+
+        ex, ey, ez = self.pos_ref - self.pos
+        if np.sum([ex**2, ey**2, ez**2]) < 0.5:
+            self.waypoint_idx = (self.waypoint_idx + 1) % len(self.waypoints)
+            self.pos_ref = self.waypoints[self.waypoint_idx]
+
+
     def calc_control_signals(self):
         # THIS IS WHERE YOU SHOULD PUT YOUR CONTROL CODE
         # THAT OUTPUTS THE REFERENCE VALUES FOR
         # ROLL PITCH, YAWRATE AND THRUST
         # WHICH ARE TAKEN CARE OF BY THE ONBOARD CONTROL LOOPS
         roll, pitch, yaw  = trans.euler_from_quaternion(self.attq)
+
+        # Update waypoints
+        self._update_waypoint()
 
         # Compute control errors in position
         ex,  ey,  ez  = self.pos_ref - self.pos
@@ -251,7 +274,7 @@ class ControllerThread(threading.Thread):
         message = ('ref: ({}, {}, {}, {})\n'.format(self.pos_ref[0], self.pos_ref[1], self.pos_ref[2], self.yaw_ref)+
                    'pos: ({}, {}, {}, {})\n'.format(self.pos[0], self.pos[1], self.pos[2], yaw)+
                    'vel: ({}, {}, {})\n'.format(self.vel[1], self.vel[1], self.vel[2])+
-                   'error: ({}, {}, {})\n'.format(ex, ey, ez)+
+                   'error: ({}, {}, {})\n'.format(ex, ey, ez) +
                    'control: ({}, {}, {}, {})\n'.format(self.roll_r, self.pitch_r, self.yawrate_r, self.thrust_r))
         self.print_at_period(2.0, message)
 
