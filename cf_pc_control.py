@@ -13,7 +13,7 @@ from cflib.crazyflie.log import LogConfig
 
 # Set a channel - if set to None, the first available crazyflie is used
 #URI = 'radio://0/101/2M'
-URI = None
+URI = 'radio://0/110/2M'
 
 def read_input(file=sys.stdin):
     """Registers keystrokes and yield these every time one of the
@@ -126,6 +126,7 @@ class ControllerThread(threading.Thread):
     def _connection_failed(self, link_uri, msg):
         print('Connection to %s failed: %s' % (link_uri, msg))
 
+
     def _connection_lost(self, link_uri, msg):
         print('Connection to %s lost: %s' % (link_uri, msg))
 
@@ -218,23 +219,25 @@ class ControllerThread(threading.Thread):
         ex,  ey,  ez  = self.pos_ref - self.pos
 
         dt = ((np.array([ex, ey, ez, yaw]) - self.prev_errs) /
-              (self.period_in_ms / 1000))
+              (self.period_in_ms / 1000.0))
         dex, dey, dez, dyaw = dt
+        #dex, dey, dez = self.vel
 
         # INSERT CONTROL EQUATIONS HERE
-        Kpp = 0.0
-        Kpd = 0.0
-        Kzp = 0.0
-        Kzd = 0.0
+        Kpp = 20.0
+        Kpd = 10.0
+        Kzp = 0.5
+        Kzd = 0.2
         Kpsid = 0.0
-        C = 0.0
+        C = 123712.0
         m = 0.027
         g = 9.81
 
-        self.roll_r = Kpp * ex + Kpd * dex
-        self.pitch_r = -(Kpp * ey + Kpd * dey)
+        self.pitch_r = (Kpp * ex + Kpd * dex)
+        self.roll_r = -(Kpp * ey + Kpd * dey)
         self.yawrate_r = Kpsid * dyaw
         self.thrust_r = C * (Kzp * ez + Kzd * dez + m * g)
+
 
         # The code below will simply send the thrust that you can set using
         # the keyboard and put all other control signals to zero. It also
