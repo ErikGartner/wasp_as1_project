@@ -47,19 +47,21 @@ class ControllerThread(threading.Thread):
         self.cf = cf
 
         # Series of waypoints to follow
+        # Not that ground is offset by around 0.3 m
         self.waypoints = [
-            np.array([1.0, 0.8, 0.8]),
-            np.array([1.0, 0.8, 2.0]),
-            np.array([1.0, 4.0, 2.0]),
-            np.array([1.0, 4.0, 0.8]),
-            np.array([1.0, 4.0, 2.0]),
-            np.array([1.0, 0.8, 2.0]),
-            np.array([1.0, 0.8, 0.8]),
+            np.array([1.09360945225, 0.553437232971, 0.4]),
+            np.array([1.09360945225, 0.553437232971, 2.0]),
+            np.array([0.832628905773, 3.23072123528, 2.0]),
+            np.array([0.832628905773, 3.23072123528, 1.2]),
+            np.array([0.832628905773, 3.23072123528, 2.0]),
+            np.array([1.09360945225, 0.553437232971, 2.0]),
+            np.array([1.09360945225, 0.553437232971, 0.4]),
         ]
 
         self.waypoint_idx = 0
         self.waypoint_ticks = 0
         self.pos_ref = self.waypoints[0]
+        self.sleep_points = set([3, 6])
 
         # Reset state
         self.disable(stop=False)
@@ -235,6 +237,10 @@ class ControllerThread(threading.Thread):
 
         if np.sum([ex**2, ey**2, ez**2]) < 0.2:
             if self.waypoint_ticks > 100:
+                if self.waypoint_idx in self.sleep_points:
+                    self.disable()
+                    time.sleep(2)
+                    self.enable()
                 self.waypoint_idx = (self.waypoint_idx + 1) % len(self.waypoints)
                 self.waypoint_ticks = 0
             else:
