@@ -48,14 +48,15 @@ class ControllerThread(threading.Thread):
 
         # Series of waypoints to follow
         self.waypoints = [
-            [1.0, 0.8, 0.8],
-            [1.0, 0.8, 2.0],
-            [1.0, 4.0, 2.0],
-            [1.0, 4.0, 0.8],
-            [1.0, 4.0, 2.0],
-            [1.0, 0.8, 2.0],
-            [1.0, 0.8, 0.8],
+            np.array([1.0, 0.8, 0.8]),
+            np.array([1.0, 0.8, 2.0]),
+            np.array([1.0, 4.0, 2.0]),
+            np.array([1.0, 4.0, 0.8]),
+            np.array([1.0, 4.0, 2.0]),
+            np.array([1.0, 0.8, 2.0]),
+            np.array([1.0, 0.8, 0.8]),
         ]
+
         self.waypoint_idx = 0
         self.waypoint_ticks = 0
         self.pos_ref = self.waypoints[0]
@@ -226,15 +227,20 @@ class ControllerThread(threading.Thread):
 
     def _update_waypoint(self):
 
-        ex, ey, ez = self.pos_ref - self.pos
+        v_max = 1.0 #m/s
+        ex, ey, ez = self.waypoints[self.waypoint_idx] - self.pos
+
+        if np.linalg.norm(self.waypoints[self.waypoint_idx] - self.pos_ref) > 0.0001:
+            self.pos_ref = self.pos_ref + (self.waypoints[self.waypoint_idx] - self.pos_ref) / np.linalg.norm(self.waypoints[self.waypoint_idx] - self.pos_ref) * v_max * self.period_in_ms / 1000.0
+
         if np.sum([ex**2, ey**2, ez**2]) < 0.2:
             if self.waypoint_ticks > 100:
                 self.waypoint_idx = (self.waypoint_idx + 1) % len(self.waypoints)
-                self.pos_ref = self.waypoints[self.waypoint_idx]
-                print('New waypoint: %s' % self.pos_ref)
                 self.waypoint_ticks = 0
             else:
                 self.waypoint_ticks += 1
+        else:
+            self.waypoint_ticks = 0
 
 
     def calc_control_signals(self):
@@ -252,27 +258,28 @@ class ControllerThread(threading.Thread):
         self.ez_sum.append(ez * (self.period_in_ms / 1000.0))
         self.ez_sum = self.ez_sum[-100:]
 
+        vx, vy, vz = self.vel
+
         dt = ((np.array([ex, ey, ez, yaw]) - self.prev_errs) /
               (self.period_in_ms / 1000.0))
         dex, dey, dez, dyaw = dt
-        #dex, dey, dez = self.vel
+        dex, dey, dez = -self.vel
 
         # INSERT CONTROL EQUATIONS HERE
-        Kpp = 5.0
-        Kpd = 2.0
-        Kzp = 0.05
-        Kzd = 0.05
-        Kpsid = 0.5
-        Kzi = 0.03
-        C = 123712.0
-        m = 0.027
+        Kpp = 20.0
+        Kpd = 2 * np.sqrt(Kpp)
+        Kzp = 200
+        Kzd = 2.0 * 2.0 * np.sqrt(Kzp)
+        Kpsid = 10
+        Kzi = 0
+        C = 139
+        m = 27
         g = 9.81
 
         self.pitch_r = Kpp * ex + Kpd * dex
         self.roll_r = -(Kpp * ey + Kpd * dey)
-        self.yawrate_r = Kpsid * dyaw
+        self.yawrate_r = Kpsid * yaw
         self.thrust_r = C * (Kzp * ez + Kzd * dez + m * g + Kzi * np.sum(self.ez_sum))
-
 
         # The code below will simply send the thrust that you can set using
         # the keyboard and put all other control signals to zero. It also
@@ -287,8 +294,9 @@ class ControllerThread(threading.Thread):
                    'pos: ({}, {}, {}, {})\n'.format(self.pos[0], self.pos[1], self.pos[2], yaw)+
                    'vel: ({}, {}, {})\n'.format(self.vel[1], self.vel[1], self.vel[2])+
                    'error: ({}, {}, {})\n'.format(ex, ey, ez) +
-                   'control: ({}, {}, {}, {})\n'.format(self.roll_r, self.pitch_r, self.yawrate_r, self.thrust_r))
-        self.print_at_period(2.0, message)
+                   'control: ({}, {}, {}, {})\n'.format(self.roll_r, self.pitch_r, self.yawrate_r, self.thrust_r) +
+                   'waypoint: {}'.format(self.waypoints[self.waypoint_idx]))
+        self.print_at_period(1.0, message)
 
         # Update prev_errs
         self.prev_errs = np.array([ex, ey, ez, yaw])
