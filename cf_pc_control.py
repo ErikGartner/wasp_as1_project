@@ -48,20 +48,23 @@ class ControllerThread(threading.Thread):
 
         # Series of waypoints to follow
         # Not that ground is offset by around 0.3 m
+        Z_BETWEEN_TABLE = 0.727388553619
         self.waypoints = [
-            np.array([1.09360945225, 0.553437232971, 0.4]),
-            np.array([1.09360945225, 0.553437232971, 2.0]),
-            np.array([0.832628905773, 3.23072123528, 2.0]),
-            np.array([0.832628905773, 3.23072123528, 1.2]),
-            np.array([0.832628905773, 3.23072123528, 2.0]),
-            np.array([1.09360945225, 0.553437232971, 2.0]),
-            np.array([1.09360945225, 0.553437232971, 0.4]),
+            np.array([0.789248764515, 0.553437232971, 0.4]),     # Start pos
+            np.array([0.789248764515, 0.553437232971, Z_BETWEEN_TABLE]), # Ovan start
+            np.array([0.789248764515, 4.0, Z_BETWEEN_TABLE]), # Andra sidan bordet
+            np.array([0.789248764515, 4.0, 2.0]),     # Ovan andra sidan bordet
+            np.array([0.789248764515, 3.23072123528, 2.0]),  # Hogt ovan bordet
+            np.array([0.789248764515, 3.23072123528, 1.2]),     # Landa pa bordet
+            np.array([0.789248764515, 3.23072123528, 2.0]),     # Hogt ovan bordet
+            np.array([0.789248764515, 0.553437232971, 2.0]),     # Ovan start
+            np.array([0.789248764515, 0.553437232971, 0.4]),
         ]
 
         self.waypoint_idx = 0
         self.waypoint_ticks = 0
         self.pos_ref = self.waypoints[0]
-        self.sleep_points = set([3, 6])
+        self.sleep_points = set([5, 8])
 
         # Reset state
         self.disable(stop=False)
@@ -276,7 +279,7 @@ class ControllerThread(threading.Thread):
         Kpd = 2 * np.sqrt(Kpp)
         Kzp = 200
         Kzd = 2.0 * 2.0 * np.sqrt(Kzp)
-        Kpsid = 10
+        Kpsid = 14
         Kzi = 0
         C = 139
         m = 27
