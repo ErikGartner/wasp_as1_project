@@ -49,11 +49,11 @@ class ControllerThread(threading.Thread):
         # Series of waypoints to follow
         self.waypoints = [
             [1.0, 0.8, 0.8],
-            [1.0, 1.6, 2.0],
-            [1.0, 3.2, 2.0],
+            [1.0, 0.8, 2.0],
+            [1.0, 4.0, 2.0],
             [1.0, 4.0, 0.8],
-            [1.0, 3.2, 2.0],
-            [1.0, 1.6, 2.0],
+            [1.0, 4.0, 2.0],
+            [1.0, 0.8, 2.0],
             [1.0, 0.8, 0.8],
         ]
         self.waypoint_idx = 0
@@ -87,6 +87,8 @@ class ControllerThread(threading.Thread):
 
         # This makes Python exit when this is the only thread alive.
         self.daemon = True
+
+        self.ez_sum = []
 
     def _connected(self, link_uri):
         print('Connected to', link_uri)
@@ -247,6 +249,8 @@ class ControllerThread(threading.Thread):
 
         # Compute control errors in position
         ex,  ey,  ez  = self.pos_ref - self.pos
+        self.ez_sum.append(ez * (self.period_in_ms / 1000.0))
+        self.ez_sum = self.ez_sum[-100:]
 
         dt = ((np.array([ex, ey, ez, yaw]) - self.prev_errs) /
               (self.period_in_ms / 1000.0))
@@ -254,19 +258,20 @@ class ControllerThread(threading.Thread):
         #dex, dey, dez = self.vel
 
         # INSERT CONTROL EQUATIONS HERE
-        Kpp = 10.0
-        Kpd = 5.0
+        Kpp = 5.0
+        Kpd = 2.0
         Kzp = 0.05
         Kzd = 0.05
         Kpsid = 0.5
+        Kzi = 0.03
         C = 123712.0
         m = 0.027
         g = 9.81
 
-        self.pitch_r = (Kpp * ex + Kpd * dex)
+        self.pitch_r = Kpp * ex + Kpd * dex
         self.roll_r = -(Kpp * ey + Kpd * dey)
         self.yawrate_r = Kpsid * dyaw
-        self.thrust_r = C * (Kzp * ez + Kzd * dez + m * g)
+        self.thrust_r = C * (Kzp * ez + Kzd * dez + m * g + Kzi * np.sum(self.ez_sum))
 
 
         # The code below will simply send the thrust that you can set using
